@@ -12,12 +12,18 @@
  *   ./tempo > dados/tempos.csv
  *   ./ops   > dados/operacoes.csv
  *
+ * Os parametros do experimento podem ser trocados na compilacao, ex.:
+ *   gcc -O2 -Wall -DREPETICOES=30 -DN_MAX=10000000 -DN_MAX_QUAD=200000 ...
+ *
  * Medidas:
  *   comparacoes = comparacoes entre elementos do vetor
  *   movimentos  = trocas (1 por troca) + deslocamentos/copias de elementos
  */
 
 #define _POSIX_C_SOURCE 199309L
+#ifdef _WIN32
+#define _WIN32_WINNT 0x0501      /* SetThreadExecutionState */
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,14 +36,24 @@
 
 /* ================= Parametros do experimento ================= */
 
+#ifndef REPETICOES
 #define REPETICOES 10
-#define N_MAX      1000000
-#define N_MAX_QUAD 100000         /* limite de n para casos O(n^2) */
+#endif
 
+#ifndef N_MAX
+#define N_MAX      1000000        /* maior n medido */
+#endif
+
+#ifndef N_MAX_QUAD
+#define N_MAX_QUAD 100000         /* limite de n para casos O(n^2) */
+#endif
+
+/* Tamanhos acima de N_MAX sao ignorados */
 static const int TAMANHOS[] =
 {
     1000, 2000, 5000, 10000, 20000, 50000,
-    100000, 200000, 500000, 1000000
+    100000, 200000, 500000, 1000000,
+    2000000, 5000000, 10000000
 };
 
 #define NUM_TAMANHOS ((int)(sizeof(TAMANHOS) / sizeof(TAMANHOS[0])))
@@ -599,18 +615,33 @@ int main(void)
         return 1;
     }
 
+#ifdef _WIN32
+    /* Pede ao Windows para nao suspender enquanto a coleta roda
+     * (a tela pode apagar normalmente) */
+    SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED);
+#endif
+
 #ifdef CONTAR
     printf("algoritmo,entrada,n,rep,comparacoes,movimentos\n");
 #else
     printf("algoritmo,entrada,n,rep,tempo_s\n");
 #endif
 
+    double inicio = agora();
+
     for (int e = 0; e < NUM_ENTRADAS; e++)
     {
         for (int s = 0; s < NUM_TAMANHOS; s++)
         {
             int n = TAMANHOS[s];
-            fprintf(stderr, "entrada=%s n=%d\n", NOME_ENTRADA[e], n);
+
+            if (n > N_MAX)
+            {
+                continue;
+            }
+
+            fprintf(stderr, "[%6.0f s] entrada=%s n=%d\n",
+                    agora() - inicio, NOME_ENTRADA[e], n);
 
             for (int r = 0; r < REPETICOES; r++)
             {
@@ -662,6 +693,9 @@ int main(void)
                            NOME_ALGORITMO[a], NOME_ENTRADA[e], n, r,
                            t1 - t0);
 #endif
+                    /* Grava cada linha na hora: se a coleta for interrompida,
+                     * o que ja foi medido fica salvo */
+                    fflush(stdout);
                 }
             }
         }

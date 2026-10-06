@@ -225,6 +225,7 @@ for antigo in glob.glob("graficos/*.png"):
 N_QUAD = int(rt[(rt.algoritmo == "selection_sort")]["n"].max())
 N_MAX = int(rt["n"].max())
 Y_RAZAO = 2.0          # limite do eixo y no grafico T(n)/f(n)
+REP_T = int(rt["count"].max())    # repeticoes por configuracao (tempo)
 RAPIDOS = ["mergesort", "heapsort", "quicksort", "quicksort_aleatorio", "quicksort_mm"]
 alcas_ent = [plt.Line2D([], [], color=COR_ENT[e], lw=2, marker="o", ms=5,
                         mec=SUPERFICIE, mew=1.2) for e in ENTRADAS]
@@ -255,7 +256,7 @@ ax.annotate(f"O(n log n): todos < {fmt_tempo(pior_rapido)}", xy=(N_QUAD, pior_ra
             fontsize=8.5, color=TINTA_FRACA)
 ax.legend(loc="upper left", ncol=2, fontsize=9)
 titulo(fig, "O(n²) x O(n log n)",
-       "Entrada aleatória, escala linear. Média de 10 execuções.")
+       f"Entrada aleatória, escala linear. Média de {REP_T} execuções.")
 fig.subplots_adjust(top=0.84)
 salvar(fig, "01_n2_vs_nlogn.png")
 
@@ -277,7 +278,7 @@ ax.set_ylabel("tempo médio por execução")
 rotulos_finais(ax, itens)
 ax.legend(loc="upper left", fontsize=9)
 titulo(fig, "Algoritmos O(n log n)",
-       "Entrada aleatória, escala linear. Média de 10 execuções.")
+       f"Entrada aleatória, escala linear. Média de {REP_T} execuções.")
 fig.subplots_adjust(top=0.84)
 salvar(fig, "02_algoritmos_nlogn.png")
 
@@ -305,7 +306,7 @@ for ax in eixos[3:7]:
 for ax in (eixos[0], eixos[4]):
     ax.set_ylabel("tempo médio")
 titulo(fig, "Tempo por tipo de entrada",
-       "Escala log-log. Média de 10 execuções. Casos O(n²) medidos até "
+       f"Escala log-log. Média de {REP_T} execuções. Casos O(n²) medidos até "
        f"n = {fmt_n(N_QUAD)}.")
 fig.subplots_adjust(top=0.86, hspace=0.3, wspace=0.12)
 salvar(fig, "03_tempo_por_entrada.png")
@@ -313,6 +314,7 @@ salvar(fig, "03_tempo_por_entrada.png")
 # ============ 7. Grafico 4: confirmacao da complexidade, T(n)/f(n) ============
 fig, eixos = plt.subplots(2, 4, figsize=(15, 7.4), dpi=DPI, sharex=True, sharey=True)
 eixos = eixos.ravel()
+houve_fora = False
 for ax, alg in zip(eixos, ALGORITMOS):
     ax.axhspan(0.75, 1.25, color=GRADE, alpha=0.6, lw=0, zorder=0)
     ax.axhline(1, color=EIXO, lw=1, zorder=1)
@@ -327,6 +329,7 @@ for ax, alg in zip(eixos, ALGORITMOS):
         razao = razao / np.median(razao)
         # pontos acima do limite do eixo ficam presos no topo, marcados com ▲
         fora = razao > Y_RAZAO
+        houve_fora = houve_fora or bool(fora.any())
         linha(ax, n, np.minimum(razao, Y_RAZAO), COR_ENT[ent], NOME_ENT[ent])
         ax.plot(n[fora], np.full(fora.sum(), Y_RAZAO), "^", color=COR_ENT[ent],
                 ms=7, mec=SUPERFICIE, mew=1.2, zorder=4, clip_on=False)
@@ -342,8 +345,11 @@ leg = eixos[-1]
 leg.axis("off")
 leg.legend(alcas_ent, [f"entrada {NOME_ENT[e]}" for e in ENTRADAS], loc="upper left",
            fontsize=10, title="Tipo de entrada", title_fontsize=10)
-leg.text(0.02, 0.0, "Faixa cinza: ±25% em torno de 1.\n▲ ponto acima de 2 (fora da escala).",
-         transform=leg.transAxes, fontsize=8.5, color=TINTA_FRACA, va="bottom")
+nota = "Faixa cinza: ±25% em torno de 1."
+if houve_fora:
+    nota += f"\n▲ ponto acima de {Y_RAZAO:g} (fora da escala)."
+leg.text(0.02, 0.0, nota, transform=leg.transAxes, fontsize=8.5, color=TINTA_FRACA,
+         va="bottom")
 for ax in eixos[3:7]:
     ax.set_xlabel("n")
     ax.xaxis.set_tick_params(labelbottom=True)
@@ -386,7 +392,7 @@ ax.legend(alcas_q, ["pivô = último elemento (aula)", "pivô aleatório (aula)"
           loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=3, fontsize=9)
 ax.margins(x=0.12)
 titulo(fig, "Quicksort: efeito da escolha do pivô",
-       f"n = {fmt_n(n_q)}, média de 10 execuções. Escala logarítmica.")
+       f"n = {fmt_n(n_q)}, média de {REP_T} execuções. Escala logarítmica.")
 fig.subplots_adjust(top=0.8)
 salvar(fig, "05_quicksort_pivo.png")
 
