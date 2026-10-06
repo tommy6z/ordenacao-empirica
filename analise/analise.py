@@ -194,6 +194,19 @@ def linha(ax, x, y, cor, rotulo=None, banda=None):
             label=rotulo, zorder=3)
 
 
+def pontos_e_curva(ax, d, classe, cor, rotulo, x_max):
+    """Media medida como pontos soltos e, por tras, a curva c*f(n) ajustada
+    por minimos quadrados (t = c*f(n), sem intercepto), desenhada continua."""
+    x, y = d["n"].to_numpy(float), d["mean"].to_numpy()
+    f = FUNCOES[classe]
+    c = np.sum(y * f(x)) / np.sum(f(x) ** 2)
+    grade = np.linspace(max(1.0, x_max / 1000), x_max, 400)
+    ax.plot(grade, c * f(grade), "-", color=cor, lw=1.6, alpha=0.9, zorder=2)
+    ax.plot(x, y, "o", color=cor, ms=6, mec=SUPERFICIE, mew=1.4, zorder=3)
+    return plt.Line2D([], [], color=cor, lw=1.6, marker="o", ms=6, mec=SUPERFICIE,
+                      mew=1.4, label=rotulo)
+
+
 def rotulos_finais(ax, itens, sep_pt=12):
     """Rotulo no fim de cada linha, afastando os que colidem.
     itens: lista de (x, y, texto, cor)."""
@@ -233,13 +246,15 @@ alcas_ent = [plt.Line2D([], [], color=COR_ENT[e], lw=2, marker="o", ms=5,
 # ============ 4. Grafico 1: o abismo entre n² e n log n (escala linear) ============
 fig, ax = plt.subplots(figsize=(10, 5.6), dpi=DPI)
 itens = []
+alcas = []
 for alg in ALGORITMOS:
     d = dados(rt, alg, "aleatorio")
     d = d[d["n"] <= N_QUAD]
     if d.empty:
         continue
     x, y = d["n"].to_numpy(float), d["mean"].to_numpy()
-    linha(ax, x, y, COR_ALG[alg], NOME_ALG[alg])
+    alcas.append(pontos_e_curva(ax, d, classe_teorica(alg, "aleatorio"),
+                                COR_ALG[alg], NOME_ALG[alg], N_QUAD))
     if alg in ("insertion_sort", "selection_sort"):
         itens.append((x[-1], y[-1], f"{NOME_ALG[alg]}  {fmt_tempo(y[-1])}", COR_ALG[alg]))
 pior_rapido = max(valor(rt, a, "aleatorio", N_QUAD) for a in RAPIDOS)
@@ -254,19 +269,21 @@ rotulos_finais(ax, itens)
 ax.annotate(f"O(n log n): todos < {fmt_tempo(pior_rapido)}", xy=(N_QUAD, pior_rapido),
             xytext=(-12, 10), textcoords="offset points", ha="right", va="bottom",
             fontsize=8.5, color=TINTA_FRACA)
-ax.legend(loc="upper left", ncol=2, fontsize=9)
+ax.legend(handles=alcas, loc="upper left", ncol=2, fontsize=9)
 titulo(fig, "O(n²) x O(n log n)",
-       f"Entrada aleatória, escala linear. Média de {REP_T} execuções.")
+       f"Entrada aleatória, escala linear. Pontos: média de {REP_T} execuções. "
+       "Linhas: c·n² e c·n log n ajustadas aos pontos.")
 fig.subplots_adjust(top=0.84)
 salvar(fig, "01_n2_vs_nlogn.png")
 
 # ============ 5. Grafico 2: os algoritmos O(n log n) (escala linear) ============
 fig, ax = plt.subplots(figsize=(10, 5.6), dpi=DPI)
 itens = []
+alcas = []
 for alg in RAPIDOS:
     d = dados(rt, alg, "aleatorio")
     x, y = d["n"].to_numpy(float), d["mean"].to_numpy()
-    linha(ax, x, y, COR_ALG[alg], NOME_ALG[alg])
+    alcas.append(pontos_e_curva(ax, d, "n log n", COR_ALG[alg], NOME_ALG[alg], N_MAX))
     itens.append((x[-1], y[-1], f"{NOME_ALG[alg]}  {fmt_tempo(y[-1])}", COR_ALG[alg]))
 estilo(ax)
 ax.set_xlim(0, N_MAX * 1.02)
@@ -276,9 +293,10 @@ ax.yaxis.set_major_formatter(mticker.FuncFormatter(fmt_tempo))
 ax.set_xlabel("n (tamanho do vetor)")
 ax.set_ylabel("tempo médio por execução")
 rotulos_finais(ax, itens)
-ax.legend(loc="upper left", fontsize=9)
+ax.legend(handles=alcas, loc="upper left", fontsize=9)
 titulo(fig, "Algoritmos O(n log n)",
-       f"Entrada aleatória, escala linear. Média de {REP_T} execuções.")
+       f"Entrada aleatória, escala linear. Pontos: média de {REP_T} execuções. "
+       "Linhas: c·n log n ajustada aos pontos (quase reta: log n cresce devagar).")
 fig.subplots_adjust(top=0.84)
 salvar(fig, "02_algoritmos_nlogn.png")
 
