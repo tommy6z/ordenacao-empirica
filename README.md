@@ -54,6 +54,7 @@ relatorio/  slides/  material de entrega
 | `05_quicksort_pivo.png` | As três escolhas de pivô nas 4 entradas, com n fixo |
 | `06_operacoes_normalizadas.png` | Comparações e movimentos divididos pela função de crescimento |
 | `07_quicksort_garantia.png` | Custo da mediana das medianas no caso típico × proteção no pior caso |
+| `08_variabilidade.png` | Coeficiente de variação por tamanho e distribuição das execuções (boxplot) |
 
 ## Como reproduzir
 
@@ -94,7 +95,7 @@ UTF-16, e o pandas não lê o arquivo corretamente.
 - Tempo medido com relógio monotônico de alta resolução (`clock_gettime(CLOCK_MONOTONIC)` no Linux, `QueryPerformanceCounter` no Windows). Comparações e movimentos são contados numa compilação separada (`-DCONTAR`), para não interferir no tempo.
 - Tamanhos: 13 valores de 1.000 a 10.000.000 (1, 2 e 5 × 10ᵏ). Os casos O(n²) (Selection; Insertion fora do vetor ordenado; Quicksort clássico com vetor ordenado ou inverso) vão até n = 500.000. Estendê-los até 1.000.000 multiplicaria o tempo de cada execução por 4: o Selection passaria de 111 s para cerca de 7,5 min por execução, e só ele consumiria mais de 10 horas.
 - Entradas: aleatória (caso médio), ordenada, inversa e quase ordenada (5% de trocas aleatórias). As entradas ordenada e inversa produzem o melhor e o pior caso de cada algoritmo.
-- Repetições por configuração: 20 para o tempo e 5 para a contagem de operações, que quase não varia entre repetições. Estatísticas: média, desvio padrão, coeficiente de variação e IC 95%.
+- Repetições por configuração: 20 para o tempo e 5 para a contagem de operações, que quase não varia entre repetições. Estatísticas: média, desvio padrão, coeficiente de variação e IC 95%. Os gráficos lineares mostram barras de ± 1 desvio padrão; o gráfico 8 mostra a variabilidade: o coeficiente de variação mediano cai de cerca de 10% com n = 1.000 para menos de 1% com n = 10.000.000, porque execuções curtas sofrem proporcionalmente mais com variações de frequência da CPU, estado do cache e interrupções do sistema.
 - Coleta feita com o notebook ligado na tomada e sem outros programas abertos. Em 2,4% das configurações alguma execução levou mais que o dobro da mediana (no máximo 2,6 vezes), o que indica pouca interferência externa.
 - Toda execução verifica se o vetor resultante está ordenado.
 - A contagem de operações é determinística e independente da máquina; o tempo foi medido em uma única máquina (abaixo).

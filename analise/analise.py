@@ -202,6 +202,9 @@ def pontos_e_curva(ax, d, classe, cor, rotulo, x_max):
     c = np.sum(y * f(x)) / np.sum(f(x) ** 2)
     grade = np.linspace(max(1.0, x_max / 1000), x_max, 400)
     ax.plot(grade, c * f(grade), "-", color=cor, lw=1.6, alpha=0.9, zorder=2)
+    # barras de +-1 desvio padrao
+    ax.errorbar(x, y, yerr=d["std"].to_numpy(), fmt="none", ecolor=cor, elinewidth=1.2,
+                capsize=3, capthick=1.2, zorder=2.5)
     ax.plot(x, y, "o", color=cor, ms=6, mec=SUPERFICIE, mew=1.4, zorder=3)
     return plt.Line2D([], [], color=cor, lw=1.6, marker="o", ms=6, mec=SUPERFICIE,
                       mew=1.4, label=rotulo)
@@ -277,8 +280,8 @@ rotulos_finais(ax, itens)
 rotulos_finais(az, itens_z)
 ax.legend(handles=alcas, loc="upper left", fontsize=9)
 titulo(fig, "O(n²) x O(n log n)",
-       f"Entrada aleatória, escala linear. Pontos: média de {REP_T} execuções. "
-       "Linhas: c·n² e c·n log n ajustadas aos pontos.")
+       f"Entrada aleatória, escala linear. Pontos: média de {REP_T} execuções; "
+       "barras: ± 1 desvio padrão. Linhas: c·n² e c·n log n ajustadas aos pontos.")
 fig.subplots_adjust(top=0.82, wspace=0.42)
 salvar(fig, "01_n2_vs_nlogn.png")
 
@@ -301,8 +304,9 @@ ax.set_ylabel("tempo médio por execução")
 rotulos_finais(ax, itens)
 ax.legend(handles=alcas, loc="upper left", fontsize=9)
 titulo(fig, "Algoritmos O(n log n)",
-       f"Entrada aleatória, escala linear. Pontos: média de {REP_T} execuções. "
-       "Linhas: c·n log n ajustada aos pontos (quase reta: log n cresce devagar).")
+       f"Entrada aleatória, escala linear. Pontos: média de {REP_T} execuções; "
+       "barras: ± 1 desvio padrão. Linhas: c·n log n ajustada (quase reta: log n "
+       "cresce devagar).")
 fig.subplots_adjust(top=0.84)
 salvar(fig, "02_algoritmos_nlogn.png")
 
@@ -464,6 +468,66 @@ titulo(fig, "Quicksort: o custo da garantia de pior caso",
        "na entrada ordenada (caso O(n²)).")
 fig.subplots_adjust(top=0.82, wspace=0.5)
 salvar(fig, "07_quicksort_garantia.png")
+
+# ============ 8c. Grafico 8: variabilidade das medicoes ============
+# Esquerda: coeficiente de variacao (desvio / media) por tamanho.
+# Direita: distribuicao das execucoes individuais (boxplot) com n fixo.
+N_BOX = 1000000 if N_MAX >= 1000000 else N_MAX
+fig, (ae, ad) = plt.subplots(1, 2, figsize=(15, 5.8), dpi=DPI,
+                             gridspec_kw={"width_ratios": [1.15, 1]})
+# CV de todas as configuracoes (algoritmo x entrada) de cada tamanho
+cv = rt.groupby("n")["cv_%"]
+x = np.array(sorted(rt["n"].unique()), dtype=float)
+q1, med, q3 = (cv.quantile(0.25).to_numpy(), cv.median().to_numpy(),
+               cv.quantile(0.75).to_numpy())
+cor_cv = COR_ALG["insertion_sort"]
+ae.fill_between(x, q1, q3, color=cor_cv, alpha=0.15, lw=0)
+linha(ae, x, med, cor_cv)
+eixo_n_log(ae)
+estilo(ae)
+ae.set_ylim(bottom=0)
+ae.yaxis.set_major_formatter(mticker.FuncFormatter(lambda v, _p: f"{v:g}%"))
+ae.set_xlabel("n")
+ae.set_ylabel("coeficiente de variação (desvio / média)")
+ae.set_title("Execuções curtas variam mais", loc="left", fontsize=10, fontfamily=SEMI)
+ae.text(0.98, 0.95, "linha: mediana de todas as configurações\nfaixa: 1º a 3º quartil",
+        transform=ae.transAxes, ha="right", va="top", fontsize=8.5, color=TINTA_FRACA)
+
+# desvio de cada execucao em relacao a mediana da sua configuracao, em %
+amostras = []
+for a in RAPIDOS:
+    t = tempos[(tempos.algoritmo == a) & (tempos.entrada == "aleatorio")
+               & (tempos.n == N_BOX)]["tempo_s"].to_numpy()
+    amostras.append(100 * (t / np.median(t) - 1))
+pos = np.arange(len(RAPIDOS))[::-1]
+caixas = ad.boxplot(amostras, positions=pos, vert=False, widths=0.5,
+                    patch_artist=True, showfliers=True,
+                    medianprops=dict(color=TINTA, lw=1.5),
+                    whiskerprops=dict(color=TINTA_FRACA, lw=1),
+                    capprops=dict(color=TINTA_FRACA, lw=1),
+                    flierprops=dict(marker="o", ms=4, mfc=TINTA_FRACA, mec="none"))
+for caixa, alg in zip(caixas["boxes"], RAPIDOS):
+    caixa.set(facecolor=COR_ALG[alg], alpha=0.35, edgecolor=COR_ALG[alg], lw=1.2)
+for p_, amostra in zip(pos, amostras):
+    ad.plot(amostra, np.full(len(amostra), p_), "|", color=TINTA_2, ms=8, alpha=0.5,
+            zorder=1)
+ad.set_yticks(pos, [NOME_ALG[a] for a in RAPIDOS])
+ad.axvline(0, color=EIXO, lw=1, zorder=0)
+ad.xaxis.set_major_formatter(mticker.FuncFormatter(
+    lambda v, _p: virgula(f"{v:+g}%") if v else "0"))
+estilo(ad)
+ad.grid(False, axis="y")
+lim = max(np.abs(np.concatenate(amostras)).max() * 1.15, 2)
+ad.set_xlim(-lim, lim)
+ad.set_xlabel("diferença de cada execução para a mediana")
+ad.set_title(f"As {REP_T} execuções com n = {fmt_n(N_BOX)}", loc="left", fontsize=10,
+             fontfamily=SEMI)
+titulo(fig, "Variabilidade das medições",
+       "Esquerda: todas as entradas. Direita: entrada aleatória; caixa: quartis; "
+       "traço preto: mediana; hastes: até 1,5 × intervalo interquartil; traços: "
+       "cada execução.")
+fig.subplots_adjust(top=0.82, wspace=0.55)
+salvar(fig, "08_variabilidade.png")
 
 # ============ 9. Grafico 6: contagens normalizadas x constantes teoricas ============
 fig, eixos = plt.subplots(2, 2, figsize=(14, 8.4), dpi=DPI, sharex="col")
