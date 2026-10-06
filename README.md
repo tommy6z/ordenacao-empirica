@@ -43,6 +43,18 @@ graficos/            figuras usadas no relatório e nos slides
 relatorio/  slides/  material de entrega
 ```
 
+## Gráficos
+
+| Arquivo | O que mostra |
+|---|---|
+| `01_n2_vs_nlogn.png` | O(n²) × O(n log n) em escala linear, com zoom nos O(n log n) |
+| `02_algoritmos_nlogn.png` | Os cinco algoritmos O(n log n) até 10 milhões |
+| `03_tempo_por_entrada.png` | Um painel por algoritmo, com as 4 entradas (melhor/pior caso) |
+| `04_confirmacao_teorica.png` | T(n)/f(n): curvas planas confirmam a complexidade |
+| `05_quicksort_pivo.png` | As três escolhas de pivô nas 4 entradas, com n fixo |
+| `06_operacoes_normalizadas.png` | Comparações e movimentos divididos pela função de crescimento |
+| `07_quicksort_garantia.png` | Custo da mediana das medianas no caso típico × proteção no pior caso |
+
 ## Como reproduzir
 
 Requisitos: gcc, Python 3 com pandas, numpy e matplotlib.

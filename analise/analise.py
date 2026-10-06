@@ -420,6 +420,51 @@ titulo(fig, "Quicksort: efeito da escolha do pivô",
 fig.subplots_adjust(top=0.8)
 salvar(fig, "05_quicksort_pivo.png")
 
+# ============ 8b. Grafico 7: o custo da garantia de pior caso ============
+# Esquerda: no caso tipico, quanto cada variante custa em relacao ao classico.
+# Direita: no pior caso do classico (vetor ordenado), quem degrada e quem nao.
+NOME_Q = {"quicksort": "Quicksort clássico", "quicksort_aleatorio": "Quicksort-Aleatório",
+          "quicksort_mm": "Quicksort MM"}
+fig, (ae, ad) = plt.subplots(1, 2, figsize=(15, 5.8), dpi=DPI)
+base_q = dados(rt, "quicksort", "aleatorio").set_index("n")["mean"]
+ae.axhline(1, color=COR_ALG["quicksort"], lw=2, zorder=2)
+itens = [(base_q.index.max(), 1.0, f"{NOME_Q['quicksort']}  1×", COR_ALG["quicksort"])]
+for alg in ["quicksort_aleatorio", "quicksort_mm"]:
+    d = dados(rt, alg, "aleatorio").set_index("n")["mean"]
+    rel = (d / base_q).dropna()
+    linha(ae, rel.index.to_numpy(float), rel.to_numpy(), COR_ALG[alg])
+    itens.append((rel.index[-1], rel.iloc[-1],
+                  f"{NOME_Q[alg]}  {virgula(f'{rel.iloc[-1]:.1f}')}×", COR_ALG[alg]))
+eixo_n_log(ae)
+estilo(ae)
+ae.set_ylim(0, 4)
+ae.yaxis.set_major_formatter(mticker.FuncFormatter(lambda v, _p: virgula(f"{v:g}×")))
+ae.set_xlabel("n")
+ae.set_ylabel("tempo relativo ao Quicksort clássico")
+ae.set_title("Caso típico (entrada aleatória): o preço da garantia", loc="left",
+             fontsize=10, fontfamily=SEMI)
+rotulos_finais(ae, itens)
+
+itens = []
+for alg in QUICKS:
+    d = dados(rt, alg, "ordenado")
+    x, y = d["n"].to_numpy(float), d["mean"].to_numpy()
+    linha(ad, x, y, COR_ALG[alg])
+    itens.append((x[-1], y[-1], f"{NOME_Q[alg]}  {fmt_tempo(y[-1])}", COR_ALG[alg]))
+eixo_n_log(ad)
+eixo_tempo_log(ad)
+estilo(ad)
+ad.set_xlabel("n")
+ad.set_ylabel("tempo médio (escala log)")
+ad.set_title("Pior caso do clássico (entrada ordenada): a garantia funcionando",
+             loc="left", fontsize=10, fontfamily=SEMI)
+rotulos_finais(ad, itens)
+titulo(fig, "Quicksort: o custo da garantia de pior caso",
+       f"Média de {REP_T} execuções. O pivô fixo é medido até n = {fmt_n(N_QUAD)} "
+       "na entrada ordenada (caso O(n²)).")
+fig.subplots_adjust(top=0.82, wspace=0.5)
+salvar(fig, "07_quicksort_garantia.png")
+
 # ============ 9. Grafico 6: contagens normalizadas x constantes teoricas ============
 fig, eixos = plt.subplots(2, 2, figsize=(14, 8.4), dpi=DPI, sharex="col")
 paineis = [
