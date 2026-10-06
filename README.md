@@ -39,22 +39,23 @@ src/sort.c           implementação dos algoritmos e do experimento
 analise/analise.py   estatísticas (pandas) e gráficos (matplotlib)
 dados/               CSVs brutos gerados pelo experimento
 resultados/          tabelas resumo (média, desvio padrão, IC95, expoentes)
-graficos/            figuras usadas no relatório e nos slides
+graficos/            figuras por tema, cada pasta com README.md descritivo
 relatorio/  slides/  material de entrega
 ```
 
 ## Gráficos
 
-| Arquivo | O que mostra |
+Os gráficos ficam em [`graficos/`](graficos/), em pastas por tema. Cada pasta tem um
+`README.md` com uma descrição curta de cada gráfico (escala, conteúdo e o que se observa),
+gerada pelo `analise.py` a partir dos dados.
+
+| Pasta | Gráficos |
 |---|---|
-| `01_n2_vs_nlogn.png` | O(n²) × O(n log n) em escala linear, com zoom nos O(n log n) |
-| `02_algoritmos_nlogn.png` | Os cinco algoritmos O(n log n) até 10 milhões |
-| `03_tempo_por_entrada.png` | Um painel por algoritmo, com as 4 entradas (melhor/pior caso) |
-| `04_confirmacao_teorica.png` | T(n)/f(n): curvas planas confirmam a complexidade |
-| `05_quicksort_pivo.png` | As três escolhas de pivô nas 4 entradas, com n fixo |
-| `06_operacoes_normalizadas.png` | Comparações e movimentos divididos pela função de crescimento |
-| `07_quicksort_garantia.png` | Custo da mediana das medianas no caso típico × proteção no pior caso |
-| `08_variabilidade.png` | Coeficiente de variação por tamanho e distribuição das execuções (boxplot) |
+| [`1_complexidade`](graficos/1_complexidade/) | O(n²) × O(n log n); os algoritmos O(n log n); T(n)/f(n) |
+| [`2_melhor_e_pior_caso`](graficos/2_melhor_e_pior_caso/) | Tempo por tipo de entrada |
+| [`3_quicksort_pivo`](graficos/3_quicksort_pivo/) | Efeito do pivô; custo da garantia de pior caso |
+| [`4_operacoes`](graficos/4_operacoes/) | Comparações e movimentos normalizados |
+| [`5_variabilidade`](graficos/5_variabilidade/) | Coeficiente de variação e boxplot das execuções |
 
 ## Como reproduzir
 
@@ -126,7 +127,7 @@ partição de Lomuto desbalanceia independentemente do pivô.
 ## Observação sobre cache (Heapsort)
 
 Na entrada aleatória, o tempo do Heapsort cresce mais rápido que n log n a partir de
-n ≈ 1.000.000 (gráfico `04_confirmacao_teorica.png`). Com 10 milhões de inteiros o vetor ocupa
+n ≈ 1.000.000 (gráfico `graficos/1_complexidade/04_confirmacao_teorica.png`). Com 10 milhões de inteiros o vetor ocupa
 40 MB, muito mais que o cache da CPU (3 MB), e o heap acessa posições distantes da memória (pai em
 i, filhos em 2i+1 e 2i+2), gerando falhas de cache. O Mergesort, que percorre a memória em
 sequência, não sofre esse efeito. A análise assintótica conta operações, mas não modela a

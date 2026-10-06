@@ -230,12 +230,27 @@ def rotulos_finais(ax, itens, sep_pt=12):
                     bbox=dict(boxstyle="square,pad=0.1", fc=SUPERFICIE, ec="none"))
 
 
+# Cada grafico fica numa pasta tematica, junto com a sua descricao (README.md)
+PASTAS = {
+    "1_complexidade": ["01_n2_vs_nlogn.png", "02_algoritmos_nlogn.png",
+                       "04_confirmacao_teorica.png"],
+    "2_melhor_e_pior_caso": ["03_tempo_por_entrada.png"],
+    "3_quicksort_pivo": ["05_quicksort_pivo.png", "07_quicksort_garantia.png"],
+    "4_operacoes": ["06_operacoes_normalizadas.png"],
+    "5_variabilidade": ["08_variabilidade.png"],
+}
+PASTA_DE = {nome: pasta for pasta, nomes in PASTAS.items() for nome in nomes}
+
+
 def salvar(fig, nome):
-    fig.savefig(f"graficos/{nome}", dpi=DPI, bbox_inches="tight", pad_inches=0.25)
+    pasta = os.path.join("graficos", PASTA_DE[nome])
+    os.makedirs(pasta, exist_ok=True)
+    fig.savefig(os.path.join(pasta, nome), dpi=DPI, bbox_inches="tight",
+                pad_inches=0.25)
     plt.close(fig)
 
 
-for antigo in glob.glob("graficos/*.png"):
+for antigo in glob.glob("graficos/**/*.png", recursive=True):
     os.remove(antigo)
 
 N_QUAD = int(rt[(rt.algoritmo == "selection_sort")]["n"].max())
@@ -626,3 +641,172 @@ ok = (mm == 2 * mc).all()
 print(f"Mergesort: movimentos = 2 x comparações em toda entrada: {ok}")
 ok = (mc.groupby("n").nunique() == 1).all()
 print(f"Mergesort: nº de comparações independe do tipo de entrada: {ok}")
+
+# ============ 14. Descricao de cada grafico (README.md por pasta) ============
+# Os numeros vem dos dados, entao as descricoes se atualizam a cada coleta.
+def v(alg, ent, n):
+    return valor(rt, alg, ent, n)
+
+
+def x_vezes(r):
+    return virgula(f"{r:.1f}") + "×"
+
+
+def razao_f(alg, ent, n):
+    """T(n)/f(n) normalizado pela mediana, como no grafico 4."""
+    d = dados(rt, alg, ent)
+    nn = d["n"].to_numpy(float)
+    r = d["mean"].to_numpy() / FUNCOES[classe_teorica(alg, ent)](nn)
+    r = r / np.median(r)
+    return float(r[nn == n][0])
+
+
+NLOGN = "n log n"
+
+
+def constante(resumo, alg, n, f):
+    """Contagem media dividida por n log2 n ou por n²/2 (entrada aleatoria)."""
+    d = dados(resumo, alg, "aleatorio")
+    t = float(d[d["n"] == n]["mean"].iloc[0])
+    return t / (n * np.log2(n) if f == NLOGN else n ** 2 / 2)
+
+
+# distancia maxima de T(n)/f(n) a 1 para n >= 100 mil (sem o Heapsort aleatorio)
+desvios = []
+for alg in ALGORITMOS:
+    for ent in ENTRADAS:
+        if alg == "heapsort" and ent == "aleatorio":
+            continue
+        d = dados(rt, alg, ent)
+        for n in d[d["n"] >= 100000]["n"]:
+            desvios.append(abs(razao_f(alg, ent, n) - 1))
+desvio_max = 100 * max(desvios)
+
+rel_mm = (pv["quicksort_mm"] / pv["quicksort"]).dropna()
+rel_al = (pv["quicksort_aleatorio"] / pv["quicksort"]).dropna()
+cv_med = rt.groupby("n")["cv_%"].median()
+box = np.concatenate(amostras)
+dentro3 = 100 * np.mean(np.abs(box) <= 3)
+rapidos_q = {a: v(a, "aleatorio", N_QUAD) for a in RAPIDOS}
+rapidos_m = {a: v(a, "aleatorio", N_MAX) for a in RAPIDOS}
+ordem_m = sorted(rapidos_m, key=rapidos_m.get)
+nq, nm = fmt_n(N_QUAD), fmt_n(N_MAX)
+coleta = f"Média de {REP_T} execuções por ponto."
+heap_cache = virgula(f"{razao_f('heapsort', 'aleatorio', N_MAX):.2f}")
+const_cmp = ", ".join(
+    f"{NOME_ALG[a]} {virgula(f'{constante(rc, a, N_MAX, NLOGN):.2f}')}"
+    for a in ["mergesort", "quicksort", "heapsort", "quicksort_mm"])
+ins_quad = virgula(f"{constante(rc, 'insertion_sort', N_QUAD, 'n²'):.2f}")
+sel_quad = virgula(f"{constante(rc, 'selection_sort', N_QUAD, 'n²'):.2f}")
+
+DESCRICOES = {
+    "01_n2_vs_nlogn.png": ("O(n²) × O(n log n)", [
+        "**Escala:** linear nos dois eixos. O painel da direita é um zoom no mesmo "
+        "eixo de n, com tempo em milissegundos.",
+        f"**Conteúdo:** entrada aleatória. Pontos = média; barras = ± 1 desvio "
+        f"padrão; linhas = curvas c·n² e c·n log n ajustadas. {coleta}",
+        f"**O que se observa:** as parábolas do Selection ({fmt_tempo(v('selection_sort', 'aleatorio', N_QUAD))}) "
+        f"e do Insertion ({fmt_tempo(v('insertion_sort', 'aleatorio', N_QUAD))}) com n = {nq}, "
+        f"enquanto os cinco O(n log n) ficam entre {fmt_tempo(min(rapidos_q.values()))} "
+        f"e {fmt_tempo(max(rapidos_q.values()))}.",
+    ]),
+    "02_algoritmos_nlogn.png": ("Algoritmos O(n log n)", [
+        "**Escala:** linear nos dois eixos, n até " + nm + ".",
+        f"**Conteúdo:** entrada aleatória. Pontos = média; barras = ± 1 desvio "
+        f"padrão; linhas = c·n log n ajustada. {coleta}",
+        "**O que se observa:** as curvas parecem retas porque log n cresce devagar. "
+        "Com n = " + nm + ", do mais rápido ao mais lento: "
+        + ", ".join(f"{NOME_ALG[a]} {fmt_tempo(rapidos_m[a])}" for a in ordem_m) + ". "
+        "Os pontos do Heapsort se afastam da curva para n grande (efeito de cache).",
+    ]),
+    "04_confirmacao_teorica.png": ("T(n) / f(n): confirmação da complexidade", [
+        "**Escala:** n em escala log; eixo vertical linear, de 0 a 2.",
+        "**Conteúdo:** tempo medido dividido pela função teórica f(n) de cada caso "
+        "(n, n log n ou n²), normalizado pela mediana. Faixa cinza = ±25%.",
+        f"**O que se observa:** curvas planas em torno de 1 confirmam a complexidade. "
+        f"Para n ≥ 100 mil, todas ficam a até {virgula(f'{desvio_max:.0f}')}% de 1, "
+        f"exceto o Heapsort na entrada aleatória, que chega a {heap_cache} "
+        f"com n = {nm} (falhas de cache). Desvios em n pequeno vêm de ruído de medição.",
+    ]),
+    "03_tempo_por_entrada.png": ("Tempo por tipo de entrada", [
+        "**Escala:** log-log (uma parábola vira reta de inclinação 2; n log n, "
+        "inclinação ≈ 1). Eixos iguais em todos os painéis.",
+        f"**Conteúdo:** um painel por algoritmo, uma linha por tipo de entrada. {coleta}",
+        f"**O que se observa:** o Insertion muda de classe conforme a entrada: "
+        f"{fmt_tempo(v('insertion_sort', 'ordenado', N_QUAD))} com vetor ordenado "
+        f"(melhor caso, O(n)) contra {fmt_tempo(v('insertion_sort', 'inverso', N_QUAD))} "
+        f"com vetor inverso (pior caso), n = {nq}. O Quicksort clássico vira O(n²) com "
+        f"vetor ordenado ou inverso. Selection, Merge e Heap quase não dependem da entrada.",
+    ]),
+    "05_quicksort_pivo.png": ("Quicksort: efeito da escolha do pivô", [
+        "**Escala:** tempo em escala log (cada divisão = 10×).",
+        f"**Conteúdo:** tempo médio das três escolhas de pivô em cada entrada, "
+        f"com n = {nq}. {coleta}",
+        f"**O que se observa:** com vetor ordenado, o pivô fixo leva "
+        f"{fmt_tempo(v('quicksort', 'ordenado', N_QUAD))}, contra "
+        f"{fmt_tempo(v('quicksort_aleatorio', 'ordenado', N_QUAD))} do aleatório e "
+        f"{fmt_tempo(v('quicksort_mm', 'ordenado', N_QUAD))} da mediana das medianas. "
+        f"Na entrada aleatória, o pivô fixo ({fmt_tempo(v('quicksort', 'aleatorio', N_QUAD))}) "
+        f"e o aleatório ({fmt_tempo(v('quicksort_aleatorio', 'aleatorio', N_QUAD))}) "
+        f"quase empatam, e a mediana das medianas leva "
+        f"{fmt_tempo(v('quicksort_mm', 'aleatorio', N_QUAD))}.",
+    ]),
+    "07_quicksort_garantia.png": ("Quicksort: o custo da garantia de pior caso", [
+        "**Escala:** esquerda com n em log e eixo vertical linear (tempo relativo); "
+        "direita em log-log.",
+        "**Conteúdo:** esquerda, tempo de cada variante dividido pelo do Quicksort "
+        "clássico na entrada aleatória; direita, tempo na entrada ordenada.",
+        f"**O que se observa:** a mediana das medianas custa de {x_vezes(rel_mm.min())} "
+        f"a {x_vezes(rel_mm.max())} o clássico em todo n, e o pivô aleatório cerca de "
+        f"{x_vezes(rel_al.median())}. Em troca, na entrada ordenada, o clássico sobe "
+        f"como n² até {fmt_tempo(v('quicksort', 'ordenado', N_QUAD))} (n = {nq}), "
+        f"enquanto o MM e o aleatório seguem n log n até {nm}.",
+    ]),
+    "06_operacoes_normalizadas.png": ("Operações divididas pela função de crescimento", [
+        "**Escala:** n em escala log; eixo vertical linear.",
+        "**Conteúdo:** comparações (em cima) e movimentos (embaixo) divididos por "
+        "n log₂ n ou por n²/2, na entrada aleatória. Contagens independem da máquina.",
+        f"**O que se observa:** cada curva converge para uma constante. Comparações "
+        f"por n log₂ n com n = {nm}: {const_cmp} (a teoria do Quicksort médio dá "
+        f"2 ln 2 ≈ 1,39). Comparações por n²/2 com n = {nq}: Selection {sel_quad} "
+        f"(exatamente n(n−1)/2) e Insertion {ins_quad} (≈ n²/4, como prevê o caso médio).",
+    ]),
+    "08_variabilidade.png": ("Variabilidade das medições", [
+        "**Escala:** esquerda com n em log e eixo vertical linear (%); direita linear (%).",
+        f"**Conteúdo:** esquerda, coeficiente de variação (desvio ÷ média) de todas as "
+        f"configurações; direita, boxplot das {REP_T} execuções com n = "
+        f"{fmt_n(N_BOX)}, como diferença para a mediana.",
+        f"**O que se observa:** o coeficiente de variação mediano cai de "
+        f"{virgula(f'{cv_med.iloc[0]:.0f}')}% (n = {fmt_n(cv_med.index[0])}) para "
+        f"{virgula(f'{cv_med.iloc[-1]:.1f}')}% (n = {fmt_n(cv_med.index[-1])}): "
+        f"execuções curtas sofrem mais ruído. Com n = {fmt_n(N_BOX)}, "
+        f"{virgula(f'{dentro3:.0f}')}% das execuções ficam a ±3% da mediana.",
+    ]),
+}
+
+TITULO_PASTA = {
+    "1_complexidade": "Complexidade: tempo medido × teoria",
+    "2_melhor_e_pior_caso": "Melhor e pior caso: efeito do tipo de entrada",
+    "3_quicksort_pivo": "Quicksort: escolha do pivô",
+    "4_operacoes": "Contagem de operações",
+    "5_variabilidade": "Variabilidade das medições",
+}
+AVISO = ("<!-- Gerado por analise/analise.py a partir dos dados; "
+         "não edite à mão. -->\n\n")
+
+indice = [AVISO, "# Gráficos\n\n",
+          "Cada pasta reúne gráficos de um tema, com uma descrição curta de cada um.\n\n"]
+for pasta, nomes in PASTAS.items():
+    texto = [AVISO, f"# {TITULO_PASTA[pasta]}\n"]
+    for nome in nomes:
+        tit, itens_desc = DESCRICOES[nome]
+        texto.append(f"\n## {tit}\n\n![{tit}]({nome})\n\n")
+        texto.extend(f"- {item}\n" for item in itens_desc)
+    with open(os.path.join("graficos", pasta, "README.md"), "w", encoding="utf-8",
+              newline="\n") as arq:
+        arq.writelines(texto)
+    indice.append(f"- [{TITULO_PASTA[pasta]}]({pasta}/): "
+                  + ", ".join(f"`{n}`" for n in nomes) + "\n")
+with open("graficos/README.md", "w", encoding="utf-8", newline="\n") as arq:
+    arq.writelines(indice)
+print("\nDescrições dos gráficos gravadas em graficos/*/README.md")
