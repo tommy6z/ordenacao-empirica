@@ -244,36 +244,42 @@ alcas_ent = [plt.Line2D([], [], color=COR_ENT[e], lw=2, marker="o", ms=5,
                         mec=SUPERFICIE, mew=1.2) for e in ENTRADAS]
 
 # ============ 4. Grafico 1: o abismo entre n² e n log n (escala linear) ============
-fig, ax = plt.subplots(figsize=(10, 5.6), dpi=DPI)
-itens = []
-alcas = []
+# Painel esquerdo: escala completa (a distancia entre as classes).
+# Painel direito: mesmo eixo de n, zoom so nos O(n log n).
+fig, (ax, az) = plt.subplots(1, 2, figsize=(15, 5.8), dpi=DPI)
+itens, itens_z, alcas = [], [], []
 for alg in ALGORITMOS:
     d = dados(rt, alg, "aleatorio")
     d = d[d["n"] <= N_QUAD]
     if d.empty:
         continue
     x, y = d["n"].to_numpy(float), d["mean"].to_numpy()
-    alcas.append(pontos_e_curva(ax, d, classe_teorica(alg, "aleatorio"),
-                                COR_ALG[alg], NOME_ALG[alg], N_QUAD))
-    if alg in ("insertion_sort", "selection_sort"):
-        itens.append((x[-1], y[-1], f"{NOME_ALG[alg]}  {fmt_tempo(y[-1])}", COR_ALG[alg]))
-pior_rapido = max(valor(rt, a, "aleatorio", N_QUAD) for a in RAPIDOS)
-estilo(ax)
-ax.set_xlim(0, N_QUAD * 1.02)
-ax.set_ylim(bottom=0)
-ax.xaxis.set_major_formatter(mticker.FuncFormatter(fmt_n))
-ax.yaxis.set_major_formatter(mticker.FuncFormatter(fmt_tempo))
-ax.set_xlabel("n (tamanho do vetor)")
+    classe = classe_teorica(alg, "aleatorio")
+    alcas.append(pontos_e_curva(ax, d, classe, COR_ALG[alg], NOME_ALG[alg], N_QUAD))
+    rotulo = (x[-1], y[-1], f"{NOME_ALG[alg]}  {fmt_tempo(y[-1])}", COR_ALG[alg])
+    if alg in RAPIDOS:
+        pontos_e_curva(az, d, classe, COR_ALG[alg], NOME_ALG[alg], N_QUAD)
+        itens_z.append(rotulo)
+    else:
+        itens.append(rotulo)
+for eixo in (ax, az):
+    estilo(eixo)
+    eixo.set_xlim(0, N_QUAD * 1.02)
+    eixo.set_ylim(bottom=0)
+    eixo.xaxis.set_major_formatter(mticker.FuncFormatter(fmt_n))
+    eixo.yaxis.set_major_formatter(mticker.FuncFormatter(fmt_tempo))
+    eixo.set_xlabel("n (tamanho do vetor)")
 ax.set_ylabel("tempo médio por execução")
+ax.set_title("Escala completa", loc="left", fontsize=10, fontfamily=SEMI)
+az.set_title("Zoom nos algoritmos O(n log n)", loc="left", fontsize=10,
+             fontfamily=SEMI)
 rotulos_finais(ax, itens)
-ax.annotate(f"O(n log n): todos < {fmt_tempo(pior_rapido)}", xy=(N_QUAD, pior_rapido),
-            xytext=(-12, 10), textcoords="offset points", ha="right", va="bottom",
-            fontsize=8.5, color=TINTA_FRACA)
-ax.legend(handles=alcas, loc="upper left", ncol=2, fontsize=9)
+rotulos_finais(az, itens_z)
+ax.legend(handles=alcas, loc="upper left", fontsize=9)
 titulo(fig, "O(n²) x O(n log n)",
        f"Entrada aleatória, escala linear. Pontos: média de {REP_T} execuções. "
        "Linhas: c·n² e c·n log n ajustadas aos pontos.")
-fig.subplots_adjust(top=0.84)
+fig.subplots_adjust(top=0.82, wspace=0.42)
 salvar(fig, "01_n2_vs_nlogn.png")
 
 # ============ 5. Grafico 2: os algoritmos O(n log n) (escala linear) ============
