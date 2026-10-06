@@ -1,0 +1,5 @@
+tempo
+ops
+*.exe
+__pycache__/
+.venv/
