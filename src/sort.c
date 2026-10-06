@@ -1,6 +1,9 @@
 /*
  * sort.c - Analise empirica de algoritmos de ordenacao
  *
+ * Os algoritmos seguem o pseudocodigo da Aula 3 (Analise de Algoritmos,
+ * Prof. Daniel Pedronette), com indices a partir de 0 em vez de 1.
+ *
  * Compilar (duas versoes do mesmo codigo):
  *   gcc -O2 -Wall -o tempo src/sort.c             -> mede tempo
  *   gcc -O2 -Wall -DCONTAR -o ops src/sort.c      -> conta operacoes
@@ -20,6 +23,10 @@
 #include <string.h>
 #include <stdint.h>
 #include <time.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 /* ================= Parametros do experimento ================= */
 
@@ -49,6 +56,7 @@ static unsigned long long movimentos = 0;
 #endif
 
 #define MAIOR(a, b)       (CONTA_CMP(), (a) > (b))
+#define MENOR(a, b)       (CONTA_CMP(), (a) < (b))
 #define MENOR_IGUAL(a, b) (CONTA_CMP(), (a) <= (b))
 
 static void troca(int *a, int *b)
@@ -61,16 +69,24 @@ static void troca(int *a, int *b)
 
 /* ================= Gerador de numeros (xorshift32) =================
  * Gerador proprio para que a sequencia seja identica em qualquer
- * sistema operacional/compilador (rand() varia entre plataformas). */
+ * sistema operacional/compilador (rand() varia entre plataformas).
+ * Dois estados independentes: um gera as entradas e outro sorteia o
+ * pivo do Quicksort-Aleatorio, para um nao interferir no outro. */
 
-static uint32_t estado = 1;
+static uint32_t estado = 1;          /* gerador das entradas */
+static uint32_t estado_pivo = 1;     /* gerador do pivo aleatorio */
+
+static uint32_t xorshift32(uint32_t *s)
+{
+    *s ^= *s << 13;
+    *s ^= *s >> 17;
+    *s ^= *s << 5;
+    return *s;
+}
 
 static uint32_t aleatorio(void)
 {
-    estado ^= estado << 13;
-    estado ^= estado >> 17;
-    estado ^= estado << 5;
-    return estado;
+    return xorshift32(&estado);
 }
 
 /* ================= Tipos de entrada ================= */
@@ -133,26 +149,29 @@ static void gera_entrada(int *v, int n, int tipo, uint32_t semente)
     }
 }
 
-/* ================= Insertion Sort ================= */
+/* ================= Insertion Sort =================
+ * INSERTION-SORT(A, n) da aula. */
 
 void insertion_sort(int *v, int n)
 {
-    for (int i = 1; i < n; i++)
+    for (int j = 1; j < n; j++)
     {
-        int chave = v[i];
-        int j = i - 1;
+        int chave = v[j];
+        int i = j - 1;
 
-        while (j >= 0 && MAIOR(v[j], chave))
+        while (i >= 0 && MAIOR(v[i], chave))
         {
-            v[j + 1] = v[j];
+            v[i + 1] = v[i];
             CONTA_MOV();
-            j--;
+            i--;
         }
-        v[j + 1] = chave;
+        v[i + 1] = chave;
     }
 }
 
-/* ================= Selection Sort ================= */
+/* ================= Selection Sort =================
+ * SELECTION-SORT(A, n) da aula: a troca A[i] <-> A[min] e feita em
+ * toda iteracao (mesmo com min == i), totalizando n-1 trocas. */
 
 void selection_sort(int *v, int n)
 {
@@ -162,179 +181,222 @@ void selection_sort(int *v, int n)
 
         for (int j = i + 1; j < n; j++)
         {
-            if (MAIOR(v[min], v[j]))
+            if (MENOR(v[j], v[min]))
             {
                 min = j;
             }
         }
 
-        if (min != i)
-        {
-            troca(&v[i], &v[min]);
-        }
+        troca(&v[i], &v[min]);
     }
 }
 
-/* ================= Merge Sort ================= */
+/* ================= Mergesort =================
+ * MERGESORT(A, p, r) e INTERCALA(A, p, q, r) da aula. A intercala copia
+ * A[p..q] para B[p..q] e A[q+1..r] para B[q+1..r] em ordem INVERSA;
+ * assim o maior elemento de cada metade serve de sentinela e o laco
+ * principal faz exatamente r-p+1 comparacoes, sem testar limites. */
 
-static void intercala(int *v, int *aux, int ini, int meio, int fim)
+static void intercala(int *A, int *B, int p, int q, int r)
 {
-    int i = ini;
-    int j = meio + 1;
-    int k = ini;
-
-    while (i <= meio && j <= fim)
+    for (int i = p; i <= q; i++)
     {
-        if (MENOR_IGUAL(v[i], v[j]))
+        B[i] = A[i];
+        CONTA_MOV();
+    }
+
+    for (int j = q + 1; j <= r; j++)
+    {
+        B[r + q + 1 - j] = A[j];
+        CONTA_MOV();
+    }
+
+    int i = p;
+    int j = r;
+
+    for (int k = p; k <= r; k++)
+    {
+        if (MENOR_IGUAL(B[i], B[j]))
         {
-            aux[k++] = v[i++];
+            A[k] = B[i];
+            i++;
         }
         else
         {
-            aux[k++] = v[j++];
+            A[k] = B[j];
+            j--;
         }
         CONTA_MOV();
     }
+}
 
-    while (i <= meio)
+static void mergesort_rec(int *A, int *B, int p, int r)
+{
+    if (p < r)
     {
-        aux[k++] = v[i++];
-        CONTA_MOV();
-    }
+        int q = p + (r - p) / 2;
 
-    while (j <= fim)
-    {
-        aux[k++] = v[j++];
-        CONTA_MOV();
-    }
-
-    for (k = ini; k <= fim; k++)
-    {
-        v[k] = aux[k];
+        mergesort_rec(A, B, p, q);
+        mergesort_rec(A, B, q + 1, r);
+        intercala(A, B, p, q, r);
     }
 }
 
-static void merge_rec(int *v, int *aux, int ini, int fim)
+void mergesort(int *v, int n)
 {
-    if (ini >= fim)
+    int *B = malloc((size_t)n * sizeof(int));
+
+    if (B == NULL)
     {
-        return;
-    }
-
-    int meio = ini + (fim - ini) / 2;
-
-    merge_rec(v, aux, ini, meio);
-    merge_rec(v, aux, meio + 1, fim);
-    intercala(v, aux, ini, meio, fim);
-}
-
-void merge_sort(int *v, int n)
-{
-    int *aux = malloc((size_t)n * sizeof(int));
-
-    if (aux == NULL)
-    {
-        fprintf(stderr, "Erro de memoria no merge sort\n");
+        fprintf(stderr, "Erro de memoria no mergesort\n");
         exit(1);
     }
 
-    merge_rec(v, aux, 0, n - 1);
-    free(aux);
+    mergesort_rec(v, B, 0, n - 1);
+    free(B);
 }
 
-/* ================= Heap Sort ================= */
+/* ================= Heapsort =================
+ * MAX-HEAPIFY, BUILD-MAX-HEAP e HEAPSORT da aula. Com indices a partir
+ * de 0, os filhos de i ficam em 2i+1 e 2i+2 (na aula: 2i e 2i+1). */
 
-static void desce(int *v, int n, int i)
+static void max_heapify(int *A, int n, int i)
 {
-    while (1)
+    int e = 2 * i + 1;
+    int d = 2 * i + 2;
+    int maior;
+
+    if (e < n && MAIOR(A[e], A[i]))
     {
-        int maior = i;
-        int esq = 2 * i + 1;
-        int dir = 2 * i + 2;
+        maior = e;
+    }
+    else
+    {
+        maior = i;
+    }
 
-        if (esq < n && MAIOR(v[esq], v[maior]))
-        {
-            maior = esq;
-        }
+    if (d < n && MAIOR(A[d], A[maior]))
+    {
+        maior = d;
+    }
 
-        if (dir < n && MAIOR(v[dir], v[maior]))
-        {
-            maior = dir;
-        }
-
-        if (maior == i)
-        {
-            break;
-        }
-
-        troca(&v[i], &v[maior]);
-        i = maior;
+    if (maior != i)
+    {
+        troca(&A[i], &A[maior]);
+        max_heapify(A, n, maior);
     }
 }
 
-void heap_sort(int *v, int n)
+static void build_max_heap(int *A, int n)
 {
     for (int i = n / 2 - 1; i >= 0; i--)
     {
-        desce(v, n, i);
+        max_heapify(A, n, i);
     }
+}
+
+void heapsort(int *v, int n)
+{
+    build_max_heap(v, n);
+    int m = n;
 
     for (int i = n - 1; i > 0; i--)
     {
         troca(&v[0], &v[i]);
-        desce(v, i, 0);
+        m--;
+        max_heapify(v, m, 0);
     }
 }
 
-/* ================= Quick Sort (classico) =================
- * Particao de Lomuto, pivo = ultimo elemento.
+/* ================= Quicksort =================
+ * PARTICIONE(A, p, r) e QUICKSORT(A, p, r) da aula (Lomuto, pivo A[r]).
  * Pior caso O(n^2) em vetores ordenados/inversos/quase ordenados.
- * A recursao e feita sempre na menor parte, o que limita a pilha
- * a O(log n) mesmo no pior caso (evita stack overflow). */
+ * Unica diferenca para a aula: em vez de duas chamadas recursivas, a
+ * recursao e feita na menor parte e a maior e tratada no laco. As
+ * particoes, comparacoes e trocas sao exatamente as mesmas; so a pilha
+ * fica limitada a O(log n) (com n = 50.000 ordenado, a versao da aula
+ * teria 50.000 niveis de recursao e estouraria a pilha). */
 
-static int particiona(int *v, int ini, int fim)
+static int particione(int *A, int p, int r)
 {
-    int pivo = v[fim];
-    int i = ini - 1;
+    int x = A[r];
+    int i = p - 1;
 
-    for (int j = ini; j < fim; j++)
+    for (int j = p; j < r; j++)
     {
-        if (MENOR_IGUAL(v[j], pivo))
+        if (MENOR_IGUAL(A[j], x))
         {
             i++;
-            troca(&v[i], &v[j]);
+            troca(&A[i], &A[j]);
         }
     }
 
-    troca(&v[i + 1], &v[fim]);
+    troca(&A[i + 1], &A[r]);
     return i + 1;
 }
 
-static void quick_rec(int *v, int ini, int fim)
+static void quicksort_rec(int *A, int p, int r)
 {
-    while (ini < fim)
+    while (p < r)
     {
-        int p = particiona(v, ini, fim);
+        int q = particione(A, p, r);
 
-        if (p - ini < fim - p)
+        if (q - p < r - q)
         {
-            quick_rec(v, ini, p - 1);
-            ini = p + 1;
+            quicksort_rec(A, p, q - 1);
+            p = q + 1;
         }
         else
         {
-            quick_rec(v, p + 1, fim);
-            fim = p - 1;
+            quicksort_rec(A, q + 1, r);
+            r = q - 1;
         }
     }
 }
 
-void quick_sort(int *v, int n)
+void quicksort(int *v, int n)
 {
-    quick_rec(v, 0, n - 1);
+    quicksort_rec(v, 0, n - 1);
 }
 
-/* ================= Quick Sort com Mediana das Medianas =================
+/* ================= Quicksort-Aleatorio =================
+ * PARTICIONE-ALEATORIO e QUICKSORT-ALEATORIO da aula: sorteia um indice
+ * em A[p..r], troca com A[r] e chama PARTICIONE. Caso medio O(n log n)
+ * em qualquer tipo de entrada. Mesma estrutura de recursao do quicksort. */
+
+static int particione_aleatorio(int *A, int p, int r)
+{
+    int i = p + (int)(xorshift32(&estado_pivo) % (uint32_t)(r - p + 1));
+    troca(&A[i], &A[r]);
+    return particione(A, p, r);
+}
+
+static void quicksort_aleatorio_rec(int *A, int p, int r)
+{
+    while (p < r)
+    {
+        int q = particione_aleatorio(A, p, r);
+
+        if (q - p < r - q)
+        {
+            quicksort_aleatorio_rec(A, p, q - 1);
+            p = q + 1;
+        }
+        else
+        {
+            quicksort_aleatorio_rec(A, q + 1, r);
+            r = q - 1;
+        }
+    }
+}
+
+void quicksort_aleatorio(int *v, int n)
+{
+    quicksort_aleatorio_rec(v, 0, n - 1);
+}
+
+/* ================= Quicksort com Mediana das Medianas (extra) =================
+ * Nao faz parte da Aula 3; incluido para comparacao.
  * Pivo escolhido pelo algoritmo BFPRT (Blum, Floyd, Pratt, Rivest,
  * Tarjan, 1973):
  *   1. divide o subvetor em grupos de 5 elementos;
@@ -342,7 +404,7 @@ void quick_sort(int *v, int n)
  *   3. encontra RECURSIVAMENTE a mediana dessas medianas (selecao em O(n)).
  * O pivo resultante fica garantidamente entre ~30% e ~70% dos elementos,
  * entao a particao nunca e degenerada: pior caso O(n log n).
- * Custo: constante bem maior que a do quick classico. */
+ * Custo: constante bem maior que a do quicksort classico. */
 
 static void ordena_pequeno(int *v, int ini, int fim)
 {
@@ -404,7 +466,7 @@ static int seleciona(int *v, int ini, int fim, int k)
     {
         int idx = pivo_mm(v, ini, fim);
         troca(&v[idx], &v[fim]);
-        int p = particiona(v, ini, fim);
+        int p = particione(v, ini, fim);
 
         if (k == p)
         {
@@ -423,22 +485,22 @@ static int seleciona(int *v, int ini, int fim, int k)
     return ini;
 }
 
-static void quick_mm_rec(int *v, int ini, int fim)
+static void quicksort_mm_rec(int *v, int ini, int fim)
 {
     while (fim - ini + 1 > 5)
     {
         int idx = pivo_mm(v, ini, fim);
         troca(&v[idx], &v[fim]);
-        int p = particiona(v, ini, fim);
+        int p = particione(v, ini, fim);
 
         if (p - ini < fim - p)
         {
-            quick_mm_rec(v, ini, p - 1);
+            quicksort_mm_rec(v, ini, p - 1);
             ini = p + 1;
         }
         else
         {
-            quick_mm_rec(v, p + 1, fim);
+            quicksort_mm_rec(v, p + 1, fim);
             fim = p - 1;
         }
     }
@@ -449,9 +511,9 @@ static void quick_mm_rec(int *v, int ini, int fim)
     }
 }
 
-void quick_mm_sort(int *v, int n)
+void quicksort_mm(int *v, int n)
 {
-    quick_mm_rec(v, 0, n - 1);
+    quicksort_mm_rec(v, 0, n - 1);
 }
 
 /* ================= Tabela de algoritmos ================= */
@@ -465,28 +527,39 @@ enum
     MERGE,
     HEAP,
     QUICK,
+    QUICK_ALEATORIO,
     QUICK_MM,
     NUM_ALGORITMOS
 };
 
 static const char *NOME_ALGORITMO[] =
 {
-    "insertion", "selection", "merge", "heap", "quick", "quick_mm"
+    "insertion_sort", "selection_sort", "mergesort", "heapsort",
+    "quicksort", "quicksort_aleatorio", "quicksort_mm"
 };
 
 static const FuncaoOrdena ALGORITMO[] =
 {
-    insertion_sort, selection_sort, merge_sort, heap_sort,
-    quick_sort, quick_mm_sort
+    insertion_sort, selection_sort, mergesort, heapsort,
+    quicksort, quicksort_aleatorio, quicksort_mm
 };
 
 /* ================= Utilitarios ================= */
 
+/* Relogio monotonico de alta resolucao: clock_gettime no Linux,
+ * QueryPerformanceCounter no Windows (MinGW nao tem clock_gettime) */
 static double agora(void)
 {
+#ifdef _WIN32
+    LARGE_INTEGER freq, cont;
+    QueryPerformanceFrequency(&freq);
+    QueryPerformanceCounter(&cont);
+    return (double)cont.QuadPart / (double)freq.QuadPart;
+#else
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (double)ts.tv_sec + (double)ts.tv_nsec * 1e-9;
+#endif
 }
 
 static int esta_ordenado(const int *v, int n)
@@ -557,6 +630,13 @@ int main(void)
                     memcpy(v, base, (size_t)n * sizeof(int));
                     comparacoes = 0;
                     movimentos = 0;
+
+                    /* Pivos sorteados reproduziveis (mesma semente => mesmos pivos) */
+                    estado_pivo = semente ^ 0x9E3779B9u;
+                    if (estado_pivo == 0)
+                    {
+                        estado_pivo = 1;
+                    }
 
                     double t0 = agora();
                     ALGORITMO[a](v, n);

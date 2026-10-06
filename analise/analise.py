@@ -8,7 +8,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-ALGORITMOS = ["insertion", "selection", "merge", "heap", "quick", "quick_mm"]
+ALGORITMOS = ["insertion_sort", "selection_sort", "mergesort", "heapsort",
+              "quicksort", "quicksort_aleatorio", "quicksort_mm"]
 ENTRADAS = ["aleatorio", "ordenado", "inverso", "quase"]
 
 os.makedirs("graficos", exist_ok=True)
@@ -45,13 +46,13 @@ FUNCOES = {
 
 
 def classe_teorica(alg, ent):
-    if alg == "insertion" and ent == "ordenado":
+    if alg == "insertion_sort" and ent == "ordenado":
         return "n"
-    if alg in ("insertion", "selection"):
+    if alg in ("insertion_sort", "selection_sort"):
         return "n²"
-    if alg == "quick" and ent != "aleatorio":
+    if alg == "quicksort" and ent != "aleatorio":
         return "n²"
-    return "n log n"          # merge, heap, quick (aleatorio), quick_mm
+    return "n log n"   # mergesort, heapsort, quicksort (aleatorio), aleatorio, mm
 
 
 def ajusta_constante(t, f):
@@ -113,10 +114,11 @@ for alg in ALGORITMOS:
     fig.savefig(f"graficos/teoria_{alg}.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
 
-# ============ 5. Quick classico x Quick mediana das medianas ============
+# ============ 5. Variantes do Quicksort ============
+QUICKS = ["quicksort", "quicksort_aleatorio", "quicksort_mm"]
 fig, axes = plt.subplots(1, 4, figsize=(18, 4.5), sharey=True)
 for ax, ent in zip(axes, ENTRADAS):
-    for alg in ["quick", "quick_mm"]:
+    for alg in QUICKS:
         d = dados(rt, alg, ent)
         if d.empty:
             continue
@@ -126,8 +128,9 @@ for ax, ent in zip(axes, ENTRADAS):
     ax.grid(True, which="both", alpha=0.3)
     ax.legend()
 axes[0].set_ylabel("tempo médio (s)")
-fig.suptitle("Quick Sort: pivô = último elemento  x  pivô = mediana das medianas")
-fig.savefig("graficos/quick_vs_quick_mm.png", dpi=150, bbox_inches="tight")
+fig.suptitle("Quicksort: pivô = último elemento  x  pivô aleatório  x  "
+             "pivô = mediana das medianas")
+fig.savefig("graficos/quicksort_variantes.png", dpi=150, bbox_inches="tight")
 plt.close(fig)
 
 # ============ 6. Comparacoes e movimentos ============
@@ -174,17 +177,34 @@ tab.to_csv("resultados/tabela_slides_ms.csv")
 print("\nTempo médio ± desvio padrão (ms), entrada aleatória:")
 print(tab)
 
-# ============ 9. Custo da mediana das medianas na entrada aleatoria ============
+# ============ 9. Custo da escolha do pivo na entrada aleatoria ============
 pv = rt[rt.entrada == "aleatorio"].pivot(index="n", columns="algoritmo", values="mean")
-fator = (pv["quick_mm"] / pv["quick"]).round(2)
-fator.to_csv("resultados/fator_quick_mm.csv", header=["quick_mm/quick"])
-print("\nQuanto o quick_mm é mais lento que o quick (entrada aleatória):")
+fator = pd.DataFrame({
+    "aleatorio/quicksort": pv["quicksort_aleatorio"] / pv["quicksort"],
+    "mm/quicksort": pv["quicksort_mm"] / pv["quicksort"],
+}).round(2)
+fator.to_csv("resultados/fator_pivo.csv")
+print("\nTempo relativo ao quicksort clássico (entrada aleatória):")
 print(fator)
 
 # ============ 10. Verificacoes exatas com a teoria ============
-sel = rc[rc.algoritmo == "selection"]
+sel = rc[rc.algoritmo == "selection_sort"]
 ok = (sel["mean"] == sel["n"] * (sel["n"] - 1) / 2).all()
 print(f"\nSelection faz exatamente n(n-1)/2 comparações em toda entrada: {ok}")
-ins = rc[(rc.algoritmo == "insertion") & (rc.entrada == "ordenado")]
+sel = rm[rm.algoritmo == "selection_sort"]
+ok = (sel["mean"] == sel["n"] - 1).all()
+print(f"Selection faz exatamente n-1 trocas em toda entrada: {ok}")
+ins = rc[(rc.algoritmo == "insertion_sort") & (rc.entrada == "ordenado")]
 ok = (ins["mean"] == ins["n"] - 1).all()
 print(f"Insertion (melhor caso) faz exatamente n-1 comparações: {ok}")
+ins = rm[(rm.algoritmo == "insertion_sort") & (rm.entrada == "ordenado")]
+ok = (ins["mean"] == 0).all()
+print(f"Insertion (melhor caso) faz zero deslocamentos: {ok}")
+# Intercala da aula: r-p+1 comparações e 2(r-p+1) cópias por chamada,
+# logo o total de comparações não depende da entrada e movimentos = 2x
+mc = rc[rc.algoritmo == "mergesort"].set_index(["entrada", "n"])["mean"]
+mm = rm[rm.algoritmo == "mergesort"].set_index(["entrada", "n"])["mean"]
+ok = (mm == 2 * mc).all()
+print(f"Mergesort: movimentos = 2 x comparações em toda entrada: {ok}")
+ok = (mc.groupby("n").nunique() == 1).all()
+print(f"Mergesort: nº de comparações independe do tipo de entrada: {ok}")

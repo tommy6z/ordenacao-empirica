@@ -1,0 +1,8 @@
+algoritmo,10000,50000
+heapsort,1.25 ± 0.51,6.85 ± 0.94
+insertion_sort,18.62 ± 1.94,458.20 ± 24.14
+mergesort,1.06 ± 0.33,6.08 ± 1.54
+quicksort,0.69 ± 0.09,4.43 ± 0.79
+quicksort_aleatorio,1.06 ± 0.56,4.89 ± 0.51
+quicksort_mm,2.18 ± 0.59,13.00 ± 1.29
+selection_sort,52.68 ± 5.37,1288.78 ± 48.11
