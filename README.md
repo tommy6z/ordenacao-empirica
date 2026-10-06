@@ -29,7 +29,7 @@ rotinas e mesma lógica), com índices a partir de 0 em vez de 1.
 
 - **Selection Sort:** a troca `A[i] ↔ A[min]` é feita em toda iteração, como no slide, inclusive quando `min = i`.
 - **Intercala:** copia `A[p..q]` para `B` e `A[q+1..r]` para `B` em ordem inversa, como no slide. Assim cada chamada faz exatamente r−p+1 comparações e 2(r−p+1) cópias.
-- **Quicksort e Quicksort-Aleatório:** a única diferença em relação à aula é que, em vez de duas chamadas recursivas, a recursão é feita na parte menor e a maior é tratada num laço. As partições, comparações e trocas são as mesmas; só a pilha fica limitada a O(log n). Com a recursão do slide, um vetor ordenado de 50.000 elementos geraria 50.000 níveis de chamada e estouraria a pilha.
+- **Quicksort e Quicksort-Aleatório:** a única diferença em relação à aula é que, em vez de duas chamadas recursivas, a recursão é feita na parte menor e a maior é tratada num laço. As partições, comparações e trocas são as mesmas; só a pilha fica limitada a O(log n). Com a recursão do slide, um vetor ordenado de 100.000 elementos geraria 100.000 níveis de chamada e estouraria a pilha.
 - **Quicksort MM (extra):** não faz parte da aula. Foi incluído para comparar uma escolha de pivô com garantia de pior caso O(n log n).
 
 ## Estrutura
@@ -72,7 +72,7 @@ UTF-16, e o pandas não lê o arquivo corretamente.
 - Mesma entrada para todos: o vetor é gerado uma vez por repetição (gerador xorshift32 com semente fixa) e copiado para cada algoritmo.
 - O pivô do Quicksort-Aleatório usa um gerador separado, reiniciado com a mesma semente em cada execução, então os resultados são reproduzíveis.
 - Tempo medido com relógio monotônico de alta resolução (`clock_gettime(CLOCK_MONOTONIC)` no Linux, `QueryPerformanceCounter` no Windows). Comparações e movimentos são contados numa compilação separada (`-DCONTAR`), para não interferir no tempo.
-- Tamanhos: 1.000 a 1.000.000 (progressão geométrica); casos O(n²) limitados a n = 50.000.
+- Tamanhos: 1.000 a 1.000.000 (progressão geométrica); casos O(n²) (Selection; Insertion fora do vetor ordenado; Quicksort clássico com vetor ordenado ou inverso) limitados a n = 100.000. Estendê-los até 1.000.000 multiplicaria o tempo de cada execução por 100: só o Selection levaria cerca de 9 minutos por execução, e a coleta passaria de 15 horas.
 - Entradas: aleatória (caso médio), ordenada, inversa e quase ordenada (5% de trocas aleatórias). As entradas ordenada e inversa produzem o melhor e o pior caso de cada algoritmo.
 - 10 repetições por configuração; média, desvio padrão, coeficiente de variação e IC 95%.
 - Toda execução verifica se o vetor resultante está ordenado.

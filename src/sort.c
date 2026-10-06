@@ -32,7 +32,7 @@
 
 #define REPETICOES 10
 #define N_MAX      1000000
-#define N_MAX_QUAD 50000          /* limite de n para casos O(n^2) */
+#define N_MAX_QUAD 100000         /* limite de n para casos O(n^2) */
 
 static const int TAMANHOS[] =
 {
@@ -310,12 +310,14 @@ void heapsort(int *v, int n)
 
 /* ================= Quicksort =================
  * PARTICIONE(A, p, r) e QUICKSORT(A, p, r) da aula (Lomuto, pivo A[r]).
- * Pior caso O(n^2) em vetores ordenados/inversos/quase ordenados.
+ * Pior caso O(n^2) em vetores ordenados ou inversos (na entrada quase
+ * ordenada os elementos fora do lugar viram pivos razoaveis e o
+ * comportamento observado e O(n log n)).
  * Unica diferenca para a aula: em vez de duas chamadas recursivas, a
  * recursao e feita na menor parte e a maior e tratada no laco. As
  * particoes, comparacoes e trocas sao exatamente as mesmas; so a pilha
- * fica limitada a O(log n) (com n = 50.000 ordenado, a versao da aula
- * teria 50.000 niveis de recursao e estouraria a pilha). */
+ * fica limitada a O(log n) (com n = 100.000 ordenado, a versao da aula
+ * teria 100.000 niveis de recursao e estouraria a pilha). */
 
 static int particione(int *A, int p, int r)
 {
@@ -579,7 +581,7 @@ static int permitido(int alg, int tipo, int n)
 {
     int quadratico = (alg == SELECTION)
                   || (alg == INSERTION && tipo != ORDENADO)
-                  || (alg == QUICK && tipo != ALEATORIO);
+                  || (alg == QUICK && (tipo == ORDENADO || tipo == INVERSO));
 
     return !quadratico || n <= N_MAX_QUAD;
 }

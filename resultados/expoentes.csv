@@ -1,29 +1,29 @@
 algoritmo,entrada,expoente_empirico,classe_teorica
-heapsort,aleatorio,1.12,n log n
+heapsort,aleatorio,1.14,n log n
 heapsort,inverso,1.06,n log n
-heapsort,ordenado,1.03,n log n
-heapsort,quase,1.05,n log n
-insertion_sort,aleatorio,2.02,n²
-insertion_sort,inverso,1.98,n²
+heapsort,ordenado,1.11,n log n
+heapsort,quase,1.07,n log n
+insertion_sort,aleatorio,2.04,n²
+insertion_sort,inverso,2.03,n²
 insertion_sort,ordenado,1.0,n
-insertion_sort,quase,1.91,n²
-mergesort,aleatorio,1.09,n log n
-mergesort,inverso,1.08,n log n
-mergesort,ordenado,1.04,n log n
-mergesort,quase,1.04,n log n
-quicksort,aleatorio,1.1,n log n
-quicksort,inverso,1.97,n²
-quicksort,ordenado,1.9,n²
-quicksort,quase,1.09,n²
-quicksort_aleatorio,aleatorio,1.06,n log n
-quicksort_aleatorio,inverso,1.04,n log n
-quicksort_aleatorio,ordenado,1.01,n log n
+insertion_sort,quase,1.98,n²
+mergesort,aleatorio,1.12,n log n
+mergesort,inverso,1.07,n log n
+mergesort,ordenado,1.05,n log n
+mergesort,quase,1.06,n log n
+quicksort,aleatorio,1.11,n log n
+quicksort,inverso,2.05,n²
+quicksort,ordenado,2.0,n²
+quicksort,quase,1.08,n log n
+quicksort_aleatorio,aleatorio,1.09,n log n
+quicksort_aleatorio,inverso,1.03,n log n
+quicksort_aleatorio,ordenado,1.06,n log n
 quicksort_aleatorio,quase,1.03,n log n
-quicksort_mm,aleatorio,1.09,n log n
-quicksort_mm,inverso,1.1,n log n
-quicksort_mm,ordenado,1.09,n log n
-quicksort_mm,quase,1.06,n log n
-selection_sort,aleatorio,1.98,n²
-selection_sort,inverso,1.93,n²
-selection_sort,ordenado,2.02,n²
-selection_sort,quase,1.88,n²
+quicksort_mm,aleatorio,1.13,n log n
+quicksort_mm,inverso,1.09,n log n
+quicksort_mm,ordenado,1.11,n log n
+quicksort_mm,quase,1.1,n log n
+selection_sort,aleatorio,2.02,n²
+selection_sort,inverso,2.05,n²
+selection_sort,ordenado,2.01,n²
+selection_sort,quase,2.01,n²
