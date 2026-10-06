@@ -3,7 +3,10 @@
 Trabalho 1 — Análise de Algoritmos — IGCE/UNESP
 Prof. Daniel Pedronette
 
-**Grupo:** (nomes)
+**Grupo:**
+- Fábio Almeida de Siqueira
+- Jorge Fernando Ferreira da Silva
+- Miguel Ribeiro Dantas de Alencar Fugita
 
 ## Algoritmos
 
